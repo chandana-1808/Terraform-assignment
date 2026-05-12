@@ -1,0 +1,43 @@
+pipeline {
+  agent any
+
+  environment {
+    ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')  // configure Jenkins credentials
+    ARM_CLIENT_ID       = credentials('azure-client-id')
+    ARM_CLIENT_SECRET   = credentials('azure-client-secret')
+    ARM_TENANT_ID       = credentials('azure-tenant-id')
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Terraform Init') {
+      steps {
+        sh 'terraform -chdir=. init -input=false'
+      }
+    }
+
+    stage('Terraform Plan') {
+      steps {
+        sh 'terraform -chdir=. plan -out=tfplan -input=false'
+      }
+    }
+
+    stage('Terraform Apply') {
+      steps {
+        // Non-interactive apply. In production gate this step.
+        sh 'terraform -chdir=. apply -input=false -auto-approve tfplan'
+      }
+    }
+  }
+
+  post {
+    always {
+      sh 'terraform -chdir=. output || true'
+    }
+  }
+}
